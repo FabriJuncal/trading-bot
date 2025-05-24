@@ -1,0 +1,32 @@
+{
+    "name": "root/trading-bot",
+    "autoload": {
+        "psr-4": {
+            "TradingBot\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Fabricio Juncal"
+        }
+    ],
+    "require": {
+        "ccxt/ccxt": "^4.4",
+        "guzzlehttp/guzzle": "^7.9",
+        "monolog/monolog": "^3.9",
+        "symfony/dotenv": "^7.2",
+        "react/event-loop": "^1.4",
+        "team-reflex/discord-php": "^10.10",
+        "symfony/console": "^7.2",
+        "symfony/polyfill-mbstring": "^1.32",
+        "symfony/string": "^7.2",
+        "symfony/service-contracts": "^3.5",
+        "psr/log": "^3.0",
+        "symfony/event-dispatcher": "^7.2",
+        "symfony/process": "^7.2",
+        "symfony/cache": "^7.2",
+        "react/promise": "^3.0",
+        "react/async": "^4.0",
+        "react/http": "^1.9"
+    }
+}

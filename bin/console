@@ -1,0 +1,26 @@
+#!/usr/bin/env php
+<?php
+require_once __DIR__.'/../vendor/autoload.php';
+
+use TradingBot\CLI\TradingCommand;
+use TradingBot\Utilities\Config;
+use Symfony\Component\Console\Application;
+
+try {
+    // Inicializar configuración
+    Config::initialize();
+    
+    // Crear aplicación CLI
+    $application = new Application('Trading Bot', '1.0.0');
+    
+    // Registrar comandos
+    $application->add(new TradingCommand());
+    
+    // Ejecutar aplicación
+    $application->run();
+    
+} catch (\Throwable $e) {
+    echo "Error crítico: " . $e->getMessage() . PHP_EOL;
+    echo "Trace: " . $e->getTraceAsString() . PHP_EOL;
+    exit(1);
+}
