@@ -9,7 +9,8 @@ class RsiStrategy implements StrategyInterface {
         'oversold' => 40,
         'overbought' => 70,
         'neutral' => 50,
-        'timeframe' => '1h'
+        'timeframe' => '1h',
+        'symbol' => 'N/A'
     ];
 
     public function execute(array $marketData, array $params = []): array {
@@ -71,8 +72,8 @@ class RsiStrategy implements StrategyInterface {
             'data' => [
                 'Valor RSI' => $executionResult['value'],
                 'Confianza' => $executionResult['confidence'] * 100 . '%',
-                'Par' => $this->parameters['symbol'] ?? 'N/A',
-                'Timeframe' => $this->parameters['timeframe']
+                'Par' => $this->parameters['symbol'],
+                'Temporalidad' => $this->parameters['timeframe']
             ]
         ];
     }

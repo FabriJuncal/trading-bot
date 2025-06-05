@@ -74,6 +74,10 @@ class NotificationCommand extends Command {
 
         // Inicializar componentes
         $strategy = $this->initializeStrategy($input->getOption('strategy'));
+        $strategy->setParameters([
+            'symbol' => $input->getOption('symbol'),
+            'timeframe' => $input->getOption('interval')
+        ]);
         $marketDataService = new MarketDataService(
             $input->getOption('exchange'),
             $input->getOption('symbol')
@@ -106,7 +110,8 @@ class NotificationCommand extends Command {
             while ($this->running) {
                 $data = $marketDataService->getHistoricalData(
                     $input->getOption('interval'),
-                    $strategy->getParameters()['period'] * 2
+                    $strategy->getParameters()['period'] * 2,
+                    true // Forzar actualización de datos
                 );
 
                 if ($strategy->shouldExecute($data)) {
@@ -123,7 +128,7 @@ class NotificationCommand extends Command {
                 }
 
                 $this->showStatus($output, $data);
-                sleep(10); // Esperar 1 minuto entre iteraciones
+                sleep(10); // Esperar 10 segundos entre iteraciones
             }
         } catch (\Throwable $e) {
             TradingLogger::critical($e->getMessage(), ['trace' => $e->getTrace()]);

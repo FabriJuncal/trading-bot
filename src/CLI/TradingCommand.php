@@ -82,6 +82,10 @@ class TradingCommand extends Command {
 
         // Inicializar componentes
         $strategy = $this->initializeStrategy($input->getOption('strategy'));
+        $strategy->setParameters([
+            'symbol' => $input->getOption('symbol'),
+            'timeframe' => $input->getOption('interval')
+        ]);
         $marketDataService = new MarketDataService(
             $input->getOption('exchange'),
             $input->getOption('symbol')
