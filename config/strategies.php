@@ -4,8 +4,8 @@
 return [
     'exchanges' => [
         'binance' => [
-            'api_key' => $_ENV['BINANCE_API_KEY'] ?? null,
-            'api_secret' => $_ENV['BINANCE_API_SECRET'] ?? null
+            'api_key' => $_ENV['TESTNET_BINANCE_SPOT_API_KEY'] ?? null,
+            'api_secret' => $_ENV['TESTNET_BINANCE_SPOT_API_SECRET'] ?? null
         ]
     ],
     'notifications' => [

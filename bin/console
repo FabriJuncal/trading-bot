@@ -5,6 +5,10 @@ require_once __DIR__.'/../vendor/autoload.php';
 use TradingBot\CLI\TradingCommand;
 use TradingBot\Utilities\Config;
 use Symfony\Component\Console\Application;
+use TradingBot\CLI\ListCommand;
+use TradingBot\CLI\NotificationCommand;
+use TradingBot\CLI\TradingStopCommand;
+use TradingBot\CLI\NotificationStopCommand;
 
 try {
     // Inicializar configuración
@@ -15,6 +19,10 @@ try {
     
     // Registrar comandos
     $application->add(new TradingCommand());
+    $application->add(new NotificationCommand());
+    $application->add(new TradingStopCommand());
+    $application->add(new ListCommand());
+    $application->add(new NotificationStopCommand());
     
     // Ejecutar aplicación
     $application->run();

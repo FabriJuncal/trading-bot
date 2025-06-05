@@ -10,8 +10,8 @@ class ExchangeFactory {
         switch (strtolower($exchangeName)) {
             case 'binance':
                 return new BinanceConnector(
-                    $_ENV['BINANCE_API_KEY'],
-                    $_ENV['BINANCE_API_SECRET']
+                    $_ENV['TESTNET_BINANCE_SPOT_API_KEY'],
+                    $_ENV['TESTNET_BINANCE_SPOT_API_SECRET']
                 );
             
             case 'gateio':

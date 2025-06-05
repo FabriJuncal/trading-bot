@@ -1,5 +1,4 @@
 <?php
-// src/Services/MarketDataService.php
 namespace TradingBot\Services;
 
 use TradingBot\Exchanges\ExchangeFactory;

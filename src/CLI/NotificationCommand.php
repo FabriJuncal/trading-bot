@@ -6,7 +6,6 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use TradingBot\Services\MarketDataService;
-use TradingBot\Services\OrderService;
 use TradingBot\Strategies\RsiStrategy;
 use TradingBot\Strategies\MovingAverageStrategy;
 use TradingBot\Exchanges\ExchangeFactory;
@@ -15,13 +14,13 @@ use TradingBot\Services\AccountDataService;
 use TradingBot\Utilities\TradingLogger;
 use TradingBot\Utilities\Config;
 
-class TradingCommand extends Command {
+class NotificationCommand extends Command {
     private $running = true;
     private string $pidFile;
     
     protected function configure(): void {
-        $this->setName('trade:run')
-            ->setDescription('Ejecuta el bot de trading')
+        $this->setName('notify:run')
+            ->setDescription('Ejecuta el bot de trading y notifica los resultados')
             ->addOption(
                 'strategy',
                 's',
@@ -54,23 +53,16 @@ class TradingCommand extends Command {
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
 
-        if ($this->checkExistingInstance()) {
-            $output->writeln('<error>Ya hay una instancia en ejecución para este par</error>');
-            return Command::FAILURE;
-        }
-        
         // Configurar PID
-        $this->pidFile = TradingStopCommand::getPidFile(
+        $this->pidFile = NotificationStopCommand::getPidFile(
             $input->getOption('exchange'),
             $input->getOption('symbol')
         );
 
-        $pidDir = dirname($this->pidFile);
-        if (!is_dir($pidDir)) {
-            mkdir($pidDir, 0755, true);
+        if ($this->checkExistingInstance()) {
+            $output->writeln('<error>Ya hay una instancia en ejecución para este par</error>');
+            return Command::FAILURE;
         }
-
-        file_put_contents($this->pidFile, getmypid());
         
         $this->registerPid();
         register_shutdown_function([$this, 'cleanupPid']);
@@ -86,18 +78,15 @@ class TradingCommand extends Command {
             $input->getOption('exchange'),
             $input->getOption('symbol')
         );
-        $orderService = new OrderService(
-            $input->getOption('exchange'),
-            $input->getOption('symbol')
-        );
+
         $notificationManager = new NotificationManager();
 
         // Enviar notificación de inicio
         $notificationManager->notify(
-            "🚀 Bot de Trading Iniciado",
+            "🔔 Bot de Notificaciones Iniciado",
             true,
             [
-                'Tipo' => 'Trading',
+                'Tipo' => 'Notificaciones',
                 'Exchange' => ucfirst(strtolower($input->getOption('exchange'))),
                 'Par' => $input->getOption('symbol'),
                 'Estrategia' => $input->getOption('strategy'),
@@ -106,7 +95,7 @@ class TradingCommand extends Command {
             ]
         );
 
-        $output->writeln("<info>Iniciando bot de trading con configuración:</info>");
+        $output->writeln("<info>Iniciando bot de trading para notificar con configuración:</info>");
         $output->writeln(" - Exchange: ".$input->getOption('exchange'));
         $output->writeln(" - Par: ".$input->getOption('symbol'));
         $output->writeln(" - Estrategia: ".$input->getOption('strategy'));
@@ -115,12 +104,6 @@ class TradingCommand extends Command {
 
         try {
             while ($this->running) {
-                if (TradingStopCommand::shouldStop()) {
-                    $this->running = false;
-                    TradingLogger::info("Deteniendo bot por solicitud del usuario");
-                    $output->writeln("\n<comment>Deteniendo bot...</comment>");
-                    continue;
-                }
                 $data = $marketDataService->getHistoricalData(
                     $input->getOption('interval'),
                     $strategy->getParameters()['period'] * 2
@@ -128,10 +111,6 @@ class TradingCommand extends Command {
 
                 if ($strategy->shouldExecute($data)) {
                     $result = $strategy->execute($data);
-                    $order = $orderService->executeOrder(
-                        strtolower($result['action']),
-                        Config::get('global.order_amount', 0.01)
-                    );
 
                     $notificationData = $strategy->prepareNotificationData($result);
                     $notificationManager->notify(
@@ -140,18 +119,11 @@ class TradingCommand extends Command {
                         $notificationData['data']
                     );
 
-                    $output->writeln("<fg=green>Orden ejecutada:</> ".json_encode($order));
+                    $output->writeln("<fg=green>Notificación enviada:</> ".json_encode($notificationData));
                 }
 
                 $this->showStatus($output, $data);
-
-                register_shutdown_function(function() {
-                    if (file_exists($this->pidFile)) {
-                        unlink($this->pidFile);
-                    }
-                });
-                
-                sleep(10); // Esperar 10 segundos entre iteraciones
+                sleep(10); // Esperar 1 minuto entre iteraciones
             }
         } catch (\Throwable $e) {
             TradingLogger::critical($e->getMessage(), ['trace' => $e->getTrace()]);
@@ -184,23 +156,13 @@ class TradingCommand extends Command {
         ]);
     }
 
+
     private function checkExistingInstance(): bool {
-        if (empty($this->pidFile)) {
-            return false; // No hay archivo PID definido aún
+        if (file_exists($this->pidFile)) {
+            $pid = (int) file_get_contents($this->pidFile);
+            return posix_kill($pid, 0); // Verifica si el proceso está activo
         }
-        
-        if (!file_exists($this->pidFile)) {
-            return false;
-        }
-        
-        $pid = (int) file_get_contents($this->pidFile);
-        
-        if ($pid <= 0) {
-            unlink($this->pidFile);
-            return false;
-        }
-        
-        return posix_kill($pid, 0); // Verifica si el proceso está activo
+        return false;
     }
     
     private function registerPid(): void {
@@ -218,7 +180,8 @@ class TradingCommand extends Command {
         $this->running = false;
     }
     
-    public function shutdown(): void {
+    public function shutdown(int $signal): void {
         $this->cleanupPid();
+        $this->running = false;
     }
 } 

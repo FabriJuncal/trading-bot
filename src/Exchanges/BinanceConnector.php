@@ -21,6 +21,7 @@ class BinanceConnector {
                 'defaultType' => 'spot', // spot, margin, future
                 'adjustForTimeDifference' => true
             ],
+            'enableRateLimit' => true, // Evitar bloqueos por límite de solicitudes
             'verbose' => $this->sandbox,
         ]);
 
@@ -85,12 +86,35 @@ class BinanceConnector {
 
     public function getBalance(): array {
         try {
+            // Obtener balance de la wallet
             $balance = $this->client->fetchBalance();
+
+            // Mostrar solo activos con saldo > 0
+            foreach ($balance['free'] as $asset => $amount) {
+                if ($amount > 0) {
+                    // Create a new array with the asset and amount
+                    $free[$asset] = $amount;
+                }
+            }
+            // Mostrar solo activos con saldo > 0
+            foreach ($balance['used'] as $asset => $amount) {
+                if ($amount > 0) {
+                    // echo "Activo: $asset | Saldo: $amount\n";
+                    $used[$asset] = $amount;
+                }
+            }
+            // Mostrar solo activos con saldo > 0
+            foreach ($balance['total'] as $asset => $amount) {
+                if ($amount > 0) {
+                    // echo "Activo: $asset | Saldo: $amount\n";
+                    $total[$asset] = $amount;
+                }
+            }
             
             return [
-                'free' => $balance['free'] ?? [],
-                'used' => $balance['used'] ?? [],
-                'total' => $balance['total'] ?? []
+                'free' => $free ?? [],
+                'used' => $used ?? [],
+                'total' => $total ?? []
             ];
             
         } catch (NetworkError $e) {

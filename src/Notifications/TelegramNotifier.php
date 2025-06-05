@@ -34,7 +34,7 @@ class TelegramNotifier implements NotificationChannelInterface {
                 'form_params' => [
                     'chat_id' => $this->chatId,
                     'text' => $formattedMessage,
-                    'parse_mode' => 'MarkdownV2',
+                    'parse_mode' => 'HTML',
                     'disable_web_page_preview' => true
                 ]
             ]);
@@ -53,22 +53,30 @@ class TelegramNotifier implements NotificationChannelInterface {
 
     private function formatMessage(string $message, bool $isSuccess, array $context): string {
         $emoji = $isSuccess ? '✅' : '❌';
-        $header = "{$emoji} *Trading Bot Notification* {$emoji}";
+        $header = "{$emoji} Trading Bot Notification {$emoji}";
         
         $formattedMessage = "{$header}\n\n";
-        $formattedMessage .= "```\n{$message}\n```";
+        
+        // Formatear el mensaje principal
+        $formattedMessage .= "📝 Mensaje:\n";
+        $formattedMessage .= "{$message}\n\n";
         
         if (!empty($context)) {
-            $formattedMessage .= "\n\n*Context:*\n";
-            $formattedMessage .= "```json\n" . json_encode($context, JSON_PRETTY_PRINT) . "\n```";
+            $formattedMessage .= "📊 Detalles:\n";
+            
+            // Formatear cada campo del contexto de manera más legible
+            foreach ($context as $key => $value) {
+                $key = ucfirst(str_replace('_', ' ', $key));
+                $formattedMessage .= "• {$key}: {$value}\n";
+            }
         }
         
-        return $this->escapeMarkdown($formattedMessage);
+        return $formattedMessage;
     }
 
     private function escapeMarkdown(string $text): string {
-        $characters = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'];
-        return str_replace($characters, '\\$0', $text);
+        // Ya no necesitamos escapar caracteres Markdown
+        return $text;
     }
 
     private function handleResponse($response, string $message): void {
