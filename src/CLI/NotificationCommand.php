@@ -52,6 +52,12 @@ class NotificationCommand extends Command {
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
+        // Validar formato del intervalo
+        $interval = $input->getOption('interval');
+        if (!$this->isValidIntervalFormat($interval)) {
+            $output->writeln('<error>Formato de intervalo no válido. Use el formato: Xm (minutos), Xh (horas) o Xd (días). Ejemplos: 15m, 1h, 4h</error>');
+            return Command::FAILURE;
+        }
 
         // Configurar PID
         $this->pidFile = NotificationStopCommand::getPidFile(
@@ -128,7 +134,10 @@ class NotificationCommand extends Command {
                 }
 
                 $this->showStatus($output, $data);
-                sleep(10); // Esperar 10 segundos entre iteraciones
+
+                // Calcular el tiempo de espera según el intervalo
+                $sleepTime = $this->calculateSleepTime($interval);
+                sleep($sleepTime);
             }
         } catch (\Throwable $e) {
             TradingLogger::critical($e->getMessage(), ['trace' => $e->getTrace()]);
@@ -161,6 +170,43 @@ class NotificationCommand extends Command {
         ]);
     }
 
+    private function calculateSleepTime(string $interval): int {
+        // Extraer el número y la unidad del intervalo
+        preg_match('/(\d+)([mhd])/', $interval, $matches);
+        if (count($matches) !== 3) {
+            throw new \InvalidArgumentException(
+                "Formato de intervalo no válido. Use el formato: Xm (minutos), Xh (horas) o Xd (días). Ejemplos: 15m, 1h, 4h"
+            );
+        }
+
+        $number = (int)$matches[1];
+        $unit = $matches[2];
+
+        // Validar que el número sea positivo
+        if ($number <= 0) {
+            throw new \InvalidArgumentException(
+                "El número en el intervalo debe ser positivo. Ejemplos: 15m, 1h, 4h"
+            );
+        }
+
+        // Convertir a segundos según la unidad
+        switch ($unit) {
+            case 'm': // minutos
+                return $number * 60;
+            case 'h': // horas
+                return $number * 3600;
+            case 'd': // días
+                return $number * 86400;
+            default:
+                throw new \InvalidArgumentException(
+                    "Unidad de tiempo no válida. Use m (minutos), h (horas) o d (días). Ejemplos: 15m, 1h, 4h"
+                );
+        }
+    }
+
+    private function isValidIntervalFormat(string $interval): bool {
+        return (bool) preg_match('/^\d+[mhd]$/', $interval);
+    }
 
     private function checkExistingInstance(): bool {
         if (file_exists($this->pidFile)) {
