@@ -1,195 +1,180 @@
-# Bot de Trading Automatizado
+# Bot de Inversión v2
 
-## Descripción
-Bot de trading automatizado que utiliza diferentes estrategias técnicas para operar en exchanges de criptomonedas. El bot soporta múltiples exchanges, estrategias y timeframes, con sistema de notificaciones integrado.
+Bot automatizado para trading e inversiones en criptomonedas.
 
-## Características Principales
-- Soporte para múltiples exchanges (Binance, Gate.io)
-- Estrategias técnicas implementadas (RSI, Media Móvil)
+## Características
+
+- Soporte para múltiples exchanges (Binance, Bybit, etc.)
+- Estrategias de trading personalizables
 - Sistema de notificaciones en tiempo real
-- Gestión de órdenes y manejo de riesgos
-- Validación de datos en tiempo real
-- Sistema de caché para optimizar rendimiento
-- Logging detallado de operaciones
-- Gestión separada de procesos de trading y notificación
+- Gestión de órdenes automatizada
+- Monitoreo de rendimiento
+- Pruebas automatizadas
 
 ## Requisitos
+
 - PHP 8.1 o superior
 - Composer
-- Docker (opcional)
-- Cuenta en exchange(s) soportado(s)
+- Docker y Docker Compose
+- Extensión PCNTL de PHP
+- Extensión POSIX de PHP
 
 ## Instalación
 
-### Usando Composer
+1. Clonar el repositorio:
+```bash
+git clone https://github.com/tu-usuario/bot-inversion-v2.git
+cd bot-inversion-v2
+```
+
+2. Instalar dependencias:
 ```bash
 composer install
 ```
 
-### Usando Docker
+3. Configurar el entorno:
 ```bash
-docker-compose up -d
+cp .env.example .env
+# Editar .env con tus configuraciones
 ```
 
-## Configuración
-
-### Variables de Entorno
-Crear un archivo `.env` en la raíz del proyecto con las siguientes variables:
-```env
-APP_ENV=dev
-BINANCE_API_KEY=tu_api_key
-BINANCE_API_SECRET=tu_api_secret
-GATEIO_API_KEY=tu_api_key
-GATEIO_API_SECRET=tu_api_secret
-TELEGRAM_BOT_TOKEN=tu_token
-TELEGRAM_CHAT_ID=tu_chat_id
+4. Iniciar los servicios:
+```bash
+docker compose up -d
 ```
 
 ## Uso
 
 ### Comandos Disponibles
 
-#### Iniciar Bot de Trading
+#### Trading
 ```bash
-php bin/console trade:run --strategy=rsi --exchange=binance --symbol=BTC/USDT --interval=1h
-```
+# Iniciar bot de trading
+php bin/console trade:run --exchange=binance --symbol=BTC/USDT --strategy=rsi --interval=15m
 
-#### Iniciar Bot de Notificaciones
-```bash
-php bin/console notify:run --strategy=rsi --exchange=binance --symbol=BTC/USDT --interval=1h
-```
+# Detener bot de trading
+php bin/console trade:stop --exchange=binance --symbol=BTC/USDT
 
-#### Listar Procesos
-```bash
-# Listar procesos de trading
+# Listar bots de trading en ejecución
 php bin/console trade:list
+```
 
-# Listar procesos de notificación
+#### Notificaciones
+```bash
+# Iniciar bot de notificaciones
+php bin/console notify:run --exchange=binance --symbol=BTC/USDT --strategy=rsi --interval=15m
+
+# Detener bot de notificaciones
+php bin/console notify:stop --exchange=binance --symbol=BTC/USDT
+
+# Listar bots de notificaciones en ejecución
 php bin/console notify:list
+```
 
-# Listar todos los procesos
+#### Procesos
+```bash
+# Listar todos los procesos en ejecución
 php bin/console process:list
 ```
 
-#### Detener Procesos
+### Estrategias Disponibles
+
+- RSI (Relative Strength Index)
+- MACD (Moving Average Convergence Divergence)
+- Bollinger Bands
+- EMA (Exponential Moving Average)
+
+## Pruebas
+
+El proyecto incluye pruebas automatizadas utilizando PHPUnit. Las pruebas están organizadas en:
+
+- Pruebas unitarias
+- Pruebas de integración
+- Pruebas de comandos CLI
+
+### Ejecutar Pruebas
+
 ```bash
-# Detener proceso de trading
-php bin/console trade:stop --symbol=BTC/USDT
+# Ejecutar todas las pruebas
+docker compose exec app ./vendor/bin/phpunit
 
-# Detener proceso de notificación
-php bin/console notify:stop --symbol=BTC/USDT
+# Ejecutar pruebas con reporte detallado
+docker compose exec app ./vendor/bin/phpunit --testdox
+
+# Ejecutar pruebas específicas
+docker compose exec app ./vendor/bin/phpunit tests/CLI/NotificationCommandTest.php
 ```
 
-### Parámetros de Comandos
-- `--strategy`: Estrategia a utilizar (rsi, ma)
-- `--exchange`: Exchange a utilizar (binance, gateio)
-- `--symbol`: Par a operar (ej: BTC/USDT)
-- `--interval`: Intervalo de tiempo (ej: 1h, 4h)
-- `--json`: Formato de salida JSON para comandos de listado
+### Estructura de Pruebas
 
-## Estructura del Proyecto
-
-### Directorios Principales
-- `src/`: Código fuente del proyecto
-  - `CLI/`: Comandos de consola
-  - `Exchanges/`: Conectores para exchanges
-  - `Services/`: Servicios principales
-  - `Strategies/`: Estrategias de trading
-  - `Exceptions/`: Clases de excepciones personalizadas
-  - `Utilities/`: Utilidades y helpers
-- `config/`: Archivos de configuración
-- `storage/`: Almacenamiento de datos y caché
-- `bin/`: Scripts ejecutables
-
-### Componentes Principales
-
-#### Estrategias
-- **RSI (Relative Strength Index)**
-  - Período por defecto: 14
-  - Niveles de sobrecompra/sobreventa: 70/40
-  - Señales: BUY (sobreventa), SELL (sobrecompra)
-
-- **Media Móvil**
-  - Períodos: 50 (rápida) y 200 (lenta)
-  - Señales basadas en cruces de medias
-  - Confirmación de tendencia
-
-#### Servicios
-- **MarketDataService**: Gestión de datos de mercado
-- **OrderService**: Ejecución de órdenes
-- **AccountDataService**: Gestión de cuenta
-- **NotificationManager**: Sistema de notificaciones
-
-#### Exchanges
-- **BinanceConnector**
-  - Soporte para testnet
-  - Validación de tiempo del servidor
-  - Manejo de límites de API
-
-- **GateioConnector**
-  - Soporte para sandbox
-  - Validación de mercado
-  - Manejo de órdenes
-
-## Sistema de Notificaciones
-
-### Formato de Notificaciones
 ```
-✅ Trading Bot Notification ✅
-
-📝 Mensaje:
-Señal [ESTRATEGIA]: [ACCIÓN]
-
-📊 Detalles:
-• Valor [INDICADOR]: [VALOR]
-• Confianza: [PORCENTAJE]%
-• Par: [PAR]
-• Temporalidad: [TIMEFRAME]
+tests/
+├── CLI/                    # Pruebas de comandos CLI
+│   ├── NotificationCommandTest.php
+│   ├── TradingCommandTest.php
+│   └── StopCommandsTest.php
+├── Unit/                   # Pruebas unitarias
+│   ├── Strategies/
+│   └── Services/
+├── Integration/            # Pruebas de integración
+└── data/                   # Datos de prueba
+    └── command_test_cases.php
 ```
 
-### Tipos de Notificaciones
-- Señales de trading
-- Ejecución de órdenes
-- Errores críticos
-- Estado del bot
+## Desarrollo
 
-## Manejo de Errores
+### Flujo de Trabajo
 
-### Tipos de Excepciones
-- `DataServiceException`: Errores en datos de mercado
-- `OrderExecutionException`: Errores en ejecución de órdenes
-- `ExchangeConnectionException`: Errores de conexión
-- `StrategyExecutionException`: Errores en estrategias
+El proyecto sigue la metodología GitFlow:
 
-### Sistema de Logging
-- Registro detallado de operaciones
-- Niveles: INFO, WARNING, ERROR, CRITICAL
-- Rotación de logs
-- Contexto en cada entrada
+1. `main`: Rama principal con el código en producción
+2. `develop`: Rama de desarrollo
+3. `feature/*`: Ramas para nuevas características
+4. `bugfix/*`: Ramas para correcciones de errores
+5. `release/*`: Ramas para preparar releases
+6. `hotfix/*`: Ramas para correcciones urgentes
 
-## Caché y Optimización
+### Convenciones de Código
 
-### Sistema de Caché
-- Almacenamiento en sistema de archivos
-- TTL configurable por tipo de dato
-- Invalidación automática
-- Limpieza periódica
+- PSR-12 para estilo de código
+- PHPDoc para documentación
+- Tests para nueva funcionalidad
+- Commits semánticos
 
-### Validación de Datos
-- Verificación de timestamps
-- Validación de formatos
-- Comprobación de límites
-- Sincronización con servidor
+### Ejemplo de Flujo de Trabajo
 
-## Contribución
-1. Fork del repositorio
-2. Crear rama para feature (`git checkout -b feature/AmazingFeature`)
-3. Commit de cambios (`git commit -m 'Add some AmazingFeature'`)
+```bash
+# Crear rama de feature
+git checkout -b feature/nueva-estrategia develop
+
+# Desarrollar y hacer commits
+git add .
+git commit -m "feat: implementa nueva estrategia de trading"
+
+# Actualizar con develop
+git checkout develop
+git pull origin develop
+git checkout feature/nueva-estrategia
+git merge develop
+
+# Crear pull request a develop
+git push origin feature/nueva-estrategia
+```
+
+## Contribuir
+
+1. Fork el repositorio
+2. Crear rama de feature (`git checkout -b feature/AmazingFeature`)
+3. Commit cambios (`git commit -m 'feat: add some amazing feature'`)
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abrir Pull Request
 
 ## Licencia
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
 
 ## Contacto
-Para soporte o consultas, por favor abrir un issue en el repositorio. 
+
+Tu Nombre - [@tutwitter](https://twitter.com/tutwitter)
+
+Link del Proyecto: [https://github.com/tu-usuario/bot-inversion-v2](https://github.com/tu-usuario/bot-inversion-v2) 

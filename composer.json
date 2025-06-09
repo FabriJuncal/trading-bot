@@ -28,5 +28,13 @@
         "react/promise": "^3.0",
         "react/async": "^4.0",
         "react/http": "^1.9"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
     }
 }

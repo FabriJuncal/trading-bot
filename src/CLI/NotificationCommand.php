@@ -55,7 +55,7 @@ class NotificationCommand extends Command {
         // Validar formato del intervalo
         $interval = $input->getOption('interval');
         if (!$this->isValidIntervalFormat($interval)) {
-            $output->writeln('<error>Formato de intervalo no válido. Use el formato: Xm (minutos), Xh (horas) o Xd (días). Ejemplos: 15m, 1h, 4h</error>');
+            $output->writeln('<error>Formato de intervalo no válido</error>');
             return Command::FAILURE;
         }
 
@@ -70,6 +70,23 @@ class NotificationCommand extends Command {
             return Command::FAILURE;
         }
         
+        try {
+            $strategy = $this->initializeStrategy($input->getOption('strategy'));
+        } catch (\InvalidArgumentException $e) {
+            $output->writeln('<error>Estrategia no válida</error>');
+            return Command::FAILURE;
+        }
+
+        try {
+            $marketDataService = new MarketDataService(
+                $input->getOption('exchange'),
+                $input->getOption('symbol')
+            );
+        } catch (\InvalidArgumentException $e) {
+            $output->writeln('<error>Exchange no válido</error>');
+            return Command::FAILURE;
+        }
+        
         $this->registerPid();
         register_shutdown_function([$this, 'cleanupPid']);
 
@@ -79,15 +96,10 @@ class NotificationCommand extends Command {
         pcntl_signal(SIGTERM, [$this, 'shutdown']);
 
         // Inicializar componentes
-        $strategy = $this->initializeStrategy($input->getOption('strategy'));
         $strategy->setParameters([
             'symbol' => $input->getOption('symbol'),
             'timeframe' => $input->getOption('interval')
         ]);
-        $marketDataService = new MarketDataService(
-            $input->getOption('exchange'),
-            $input->getOption('symbol')
-        );
 
         $notificationManager = new NotificationManager();
 

@@ -56,28 +56,38 @@ class TradingCommand extends Command {
         // Validar formato del intervalo
         $interval = $input->getOption('interval');
         if (!$this->isValidIntervalFormat($interval)) {
-            $output->writeln('<error>Formato de intervalo no válido. Use el formato: Xm (minutos), Xh (horas) o Xd (días). Ejemplos: 15m, 1h, 4h</error>');
+            $output->writeln('<error>Formato de intervalo no válido</error>');
             return Command::FAILURE;
         }
 
-        if ($this->checkExistingInstance()) {
-            $output->writeln('<error>Ya hay una instancia de trading en ejecución para este par</error>');
-            return Command::FAILURE;
-        }
-        
         // Configurar PID
         $this->pidFile = TradingStopCommand::getPidFile(
             $input->getOption('exchange'),
             $input->getOption('symbol')
         );
 
-        $pidDir = dirname($this->pidFile);
-        if (!is_dir($pidDir)) {
-            mkdir($pidDir, 0755, true);
+        if ($this->checkExistingInstance()) {
+            $output->writeln('<error>Ya hay una instancia de trading en ejecución para este par</error>');
+            return Command::FAILURE;
         }
 
-        file_put_contents($this->pidFile, getmypid());
-        
+        try {
+            $strategy = $this->initializeStrategy($input->getOption('strategy'));
+        } catch (\InvalidArgumentException $e) {
+            $output->writeln('<error>Estrategia no válida</error>');
+            return Command::FAILURE;
+        }
+
+        try {
+            $marketDataService = new MarketDataService(
+                $input->getOption('exchange'),
+                $input->getOption('symbol')
+            );
+        } catch (\InvalidArgumentException $e) {
+            $output->writeln('<error>Exchange no válido</error>');
+            return Command::FAILURE;
+        }
+
         $this->registerPid();
         register_shutdown_function([$this, 'cleanupPid']);
 
@@ -87,24 +97,16 @@ class TradingCommand extends Command {
         pcntl_signal(SIGTERM, [$this, 'shutdown']);
 
         // Inicializar componentes
-        $strategy = $this->initializeStrategy($input->getOption('strategy'));
         $strategy->setParameters([
             'symbol' => $input->getOption('symbol'),
             'timeframe' => $input->getOption('interval')
         ]);
-        $marketDataService = new MarketDataService(
-            $input->getOption('exchange'),
-            $input->getOption('symbol')
-        );
-        $orderService = new OrderService(
-            $input->getOption('exchange'),
-            $input->getOption('symbol')
-        );
+
         $notificationManager = new NotificationManager();
 
         // Enviar notificación de inicio
         $notificationManager->notify(
-            "🚀 Bot de Trading Iniciado",
+            "🤖 Bot de Trading Iniciado",
             true,
             [
                 'Tipo' => 'Trading',
@@ -131,17 +133,15 @@ class TradingCommand extends Command {
                     $output->writeln("\n<comment>Deteniendo bot de trading...</comment>");
                     continue;
                 }
+
                 $data = $marketDataService->getHistoricalData(
                     $input->getOption('interval'),
-                    $strategy->getParameters()['period'] * 2
+                    $strategy->getParameters()['period'] * 2,
+                    true // Forzar actualización de datos
                 );
 
                 if ($strategy->shouldExecute($data)) {
                     $result = $strategy->execute($data);
-                    $order = $orderService->executeOrder(
-                        strtolower($result['action']),
-                        Config::get('global.order_amount', 0.01)
-                    );
 
                     $notificationData = $strategy->prepareNotificationData($result);
                     $notificationManager->notify(
@@ -150,17 +150,11 @@ class TradingCommand extends Command {
                         $notificationData['data']
                     );
 
-                    $output->writeln("<fg=green>Orden ejecutada:</> ".json_encode($order));
+                    $output->writeln("<fg=green>Operación ejecutada:</> ".json_encode($notificationData));
                 }
 
                 $this->showStatus($output, $data);
 
-                register_shutdown_function(function() {
-                    if (file_exists($this->pidFile)) {
-                        unlink($this->pidFile);
-                    }
-                });
-                
                 // Calcular el tiempo de espera según el intervalo
                 $sleepTime = $this->calculateSleepTime($interval);
                 sleep($sleepTime);
