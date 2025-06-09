@@ -11,6 +11,7 @@ Bot de trading automatizado que utiliza diferentes estrategias técnicas para op
 - Validación de datos en tiempo real
 - Sistema de caché para optimizar rendimiento
 - Logging detallado de operaciones
+- Gestión separada de procesos de trading y notificación
 
 ## Requisitos
 - PHP 8.1 o superior
@@ -58,9 +59,25 @@ php bin/console trade:run --strategy=rsi --exchange=binance --symbol=BTC/USDT --
 php bin/console notify:run --strategy=rsi --exchange=binance --symbol=BTC/USDT --interval=1h
 ```
 
-#### Detener Bot
+#### Listar Procesos
 ```bash
-php bin/console trade:stop --exchange=binance --symbol=BTC/USDT
+# Listar procesos de trading
+php bin/console trade:list
+
+# Listar procesos de notificación
+php bin/console notify:list
+
+# Listar todos los procesos
+php bin/console process:list
+```
+
+#### Detener Procesos
+```bash
+# Detener proceso de trading
+php bin/console trade:stop --symbol=BTC/USDT
+
+# Detener proceso de notificación
+php bin/console notify:stop --symbol=BTC/USDT
 ```
 
 ### Parámetros de Comandos
@@ -68,6 +85,7 @@ php bin/console trade:stop --exchange=binance --symbol=BTC/USDT
 - `--exchange`: Exchange a utilizar (binance, gateio)
 - `--symbol`: Par a operar (ej: BTC/USDT)
 - `--interval`: Intervalo de tiempo (ej: 1h, 4h)
+- `--json`: Formato de salida JSON para comandos de listado
 
 ## Estructura del Proyecto
 
