@@ -10,10 +10,10 @@ use TradingBot\Utilities\TradingLogger;
 use TradingBot\Utilities\Config;
 use TradingBot\CLI\ProcessMetadata;
 
-class ListCommand extends Command {
+class NotificationListCommand extends Command {
     protected function configure(): void {
-        $this->setName('trade:list')
-            ->setDescription('Muestra los procesos de trading en ejecución')
+        $this->setName('notify:list')
+            ->setDescription('Muestra los procesos de notificación en ejecución')
             ->addOption(
                 'json',
                 'j',
@@ -26,7 +26,7 @@ class ListCommand extends Command {
         $processes = $this->getRunningProcesses();
         
         if (empty($processes)) {
-            $message = 'No hay procesos de trading activos';
+            $message = 'No hay procesos de notificación activos';
             $input->getOption('json') 
                 ? $output->writeln(json_encode(['status' => 'success', 'message' => $message]))
                 : $output->writeln("<comment>$message</comment>");
@@ -44,13 +44,13 @@ class ListCommand extends Command {
 
     private function getRunningProcesses(): array {
         $processes = [];
-        $pidFiles = glob(TradingStopCommand::PID_DIR . TradingStopCommand::PID_PREFIX . '*.pid');
+        $pidFiles = glob(NotificationStopCommand::PID_DIR . NotificationStopCommand::PID_PREFIX . '*.pid');
 
         foreach ($pidFiles as $file) {
             $pid = (int) file_get_contents($file);
             
-            // Solo procesar archivos que NO contengan 'notify' en el nombre
-            if (strpos($file, 'notify') === false) {
+            // Solo procesar archivos que contengan 'notify' en el nombre
+            if (strpos($file, 'notify') !== false) {
                 if ($this->isProcessRunning($pid)) {
                     $metadata = ProcessMetadata::fromPidFile($file, $pid);
                     $processes[] = $metadata->toArray();
@@ -88,6 +88,6 @@ class ListCommand extends Command {
         }
         
         $table->render();
-        $output->writeln("<info>Total procesos de trading: " . count($processes) . "</info>");
+        $output->writeln("<info>Total procesos de notificación: " . count($processes) . "</info>");
     }
-}
+} 

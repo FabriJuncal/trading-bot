@@ -61,7 +61,7 @@ class TradingCommand extends Command {
         }
 
         if ($this->checkExistingInstance()) {
-            $output->writeln('<error>Ya hay una instancia en ejecución para este par</error>');
+            $output->writeln('<error>Ya hay una instancia de trading en ejecución para este par</error>');
             return Command::FAILURE;
         }
         
@@ -127,8 +127,8 @@ class TradingCommand extends Command {
             while ($this->running) {
                 if (TradingStopCommand::shouldStop()) {
                     $this->running = false;
-                    TradingLogger::info("Deteniendo bot por solicitud del usuario");
-                    $output->writeln("\n<comment>Deteniendo bot...</comment>");
+                    TradingLogger::info("Deteniendo bot de trading por solicitud del usuario");
+                    $output->writeln("\n<comment>Deteniendo bot de trading...</comment>");
                     continue;
                 }
                 $data = $marketDataService->getHistoricalData(

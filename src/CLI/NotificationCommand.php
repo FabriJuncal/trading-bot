@@ -66,7 +66,7 @@ class NotificationCommand extends Command {
         );
 
         if ($this->checkExistingInstance()) {
-            $output->writeln('<error>Ya hay una instancia en ejecución para este par</error>');
+            $output->writeln('<error>Ya hay una instancia de notificación en ejecución para este par</error>');
             return Command::FAILURE;
         }
         
@@ -114,6 +114,13 @@ class NotificationCommand extends Command {
 
         try {
             while ($this->running) {
+                if (NotificationStopCommand::shouldStop()) {
+                    $this->running = false;
+                    TradingLogger::info("Deteniendo bot de notificación por solicitud del usuario");
+                    $output->writeln("\n<comment>Deteniendo bot de notificación...</comment>");
+                    continue;
+                }
+
                 $data = $marketDataService->getHistoricalData(
                     $input->getOption('interval'),
                     $strategy->getParameters()['period'] * 2,

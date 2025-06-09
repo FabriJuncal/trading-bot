@@ -9,6 +9,8 @@ use TradingBot\CLI\ListCommand;
 use TradingBot\CLI\NotificationCommand;
 use TradingBot\CLI\TradingStopCommand;
 use TradingBot\CLI\NotificationStopCommand;
+use TradingBot\CLI\NotificationListCommand;
+use TradingBot\CLI\ProcessListCommand;
 
 try {
     // Inicializar configuración
@@ -23,6 +25,8 @@ try {
     $application->add(new TradingStopCommand());
     $application->add(new ListCommand());
     $application->add(new NotificationStopCommand());
+    $application->add(new NotificationListCommand());
+    $application->add(new ProcessListCommand());
     
     // Ejecutar aplicación
     $application->run();

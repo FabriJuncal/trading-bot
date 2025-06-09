@@ -6,14 +6,23 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use TradingBot\Utilities\TradingLogger;
+use TradingBot\Notifications\NotificationManager;
+use TradingBot\CLI\ProcessMetadata;
 
 class NotificationStopCommand extends Command {
-    private const PID_DIR = __DIR__.'/../../storage/pids/';
-    private const PID_PREFIX = 'tradingbot_';
+    public const PID_DIR = __DIR__.'/../../storage/pids/';
+    public const PID_PREFIX = 'tradingbot_';
+
+    private $notificationManager;
+
+    public function __construct() {
+        parent::__construct();
+        $this->notificationManager = new NotificationManager();
+    }
 
     protected function configure(): void {
         $this->setName('notify:stop')
-            ->setDescription('Detiene el bot de notificaciones usando el PID')
+            ->setDescription('Detiene los procesos de notificación usando el PID')
             ->addOption('symbol', 's', InputOption::VALUE_OPTIONAL, 'Par específico a detener');
     }
 
@@ -22,18 +31,30 @@ class NotificationStopCommand extends Command {
         $pids = $this->getRunningPids($symbol);
 
         if (empty($pids)) {
-            $output->writeln('<comment>No hay instancias en ejecución</comment>');
+            $output->writeln('<comment>No hay instancias de notificación en ejecución</comment>');
             return Command::SUCCESS;
         }
 
         foreach ($pids as $pidFile => $pid) {
+            $metadata = ProcessMetadata::fromPidFile($pidFile, $pid);
+            
             if ($this->sendTerminationSignal($pid)) {
-                unlink($pidFile);
-                $output->writeln("<info>Detenido proceso $pid (" . basename($pidFile) . ")</info>");
-                TradingLogger::info("Bot detenido", ['pid' => $pid, 'file' => $pidFile]);
+                if (file_exists($pidFile)) {
+                    unlink($pidFile);
+                }
+                $output->writeln("<info>Detenido proceso de notificación $pid (" . basename($pidFile) . ")</info>");
+                TradingLogger::info("Bot de notificación detenido", ['pid' => $pid, 'file' => $pidFile]);
+                
+                // Enviar notificación de Telegram
+                $metadata->setStatus('Detenido');
+                $this->notificationManager->notify(
+                    "🛑 Bot de Notificación Detenido",
+                    true,
+                    $metadata->toArray()
+                );
             } else {
-                $output->writeln("<error>Error deteniendo proceso $pid</error>");
-                TradingLogger::error("Fallo al detener bot", ['pid' => $pid]);
+                $output->writeln("<error>Error deteniendo proceso de notificación $pid</error>");
+                TradingLogger::error("Fallo al detener bot de notificación", ['pid' => $pid]);
             }
         }
 
@@ -47,7 +68,8 @@ class NotificationStopCommand extends Command {
         foreach ($files as $file) {
             $pid = (int) file_get_contents($file);
             
-            if ($symbol === 'all' || str_contains($file, $symbol)) {
+            // Solo procesar archivos que contengan 'notify' en el nombre
+            if (strpos($file, 'notify') !== false && ($symbol === 'all' || str_contains($file, $symbol))) {
                 if (posix_kill($pid, 0)) { // Verifica si el proceso existe
                     $pids[$file] = $pid;
                 } else {
@@ -79,5 +101,14 @@ class NotificationStopCommand extends Command {
                     '.pid';
         
         return self::PID_DIR . $filename;
+    }
+
+    public static function shouldStop(): bool {
+        $stopFile = self::PID_DIR . 'stop_signal';
+        if (file_exists($stopFile)) {
+            unlink($stopFile);
+            return true;
+        }
+        return false;
     }
 }

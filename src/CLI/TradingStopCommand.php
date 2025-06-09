@@ -21,8 +21,8 @@ class TradingStopCommand extends Command {
     }
 
     protected function configure(): void {
-        $this->setName('trading:stop')
-            ->setDescription('Detiene el bot de trading usando el PID')
+        $this->setName('trade:stop')
+            ->setDescription('Detiene los procesos de trading usando el PID')
             ->addOption('symbol', 's', InputOption::VALUE_OPTIONAL, 'Par específico a detener');
     }
 
@@ -68,7 +68,8 @@ class TradingStopCommand extends Command {
         foreach ($files as $file) {
             $pid = (int) file_get_contents($file);
             
-            if ($symbol === 'all' || str_contains($file, $symbol)) {
+            // Solo procesar archivos que NO contengan 'notify' en el nombre
+            if (strpos($file, 'notify') === false && ($symbol === 'all' || str_contains($file, $symbol))) {
                 if (posix_kill($pid, 0)) { // Verifica si el proceso existe
                     $pids[$file] = $pid;
                 } else {

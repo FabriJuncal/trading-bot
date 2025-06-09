@@ -10,10 +10,10 @@ use TradingBot\Utilities\TradingLogger;
 use TradingBot\Utilities\Config;
 use TradingBot\CLI\ProcessMetadata;
 
-class ListCommand extends Command {
+class ProcessListCommand extends Command {
     protected function configure(): void {
-        $this->setName('trade:list')
-            ->setDescription('Muestra los procesos de trading en ejecución')
+        $this->setName('process:list')
+            ->setDescription('Muestra todos los procesos del bot en ejecución')
             ->addOption(
                 'json',
                 'j',
@@ -26,7 +26,7 @@ class ListCommand extends Command {
         $processes = $this->getRunningProcesses();
         
         if (empty($processes)) {
-            $message = 'No hay procesos de trading activos';
+            $message = 'No hay procesos activos';
             $input->getOption('json') 
                 ? $output->writeln(json_encode(['status' => 'success', 'message' => $message]))
                 : $output->writeln("<comment>$message</comment>");
@@ -49,15 +49,12 @@ class ListCommand extends Command {
         foreach ($pidFiles as $file) {
             $pid = (int) file_get_contents($file);
             
-            // Solo procesar archivos que NO contengan 'notify' en el nombre
-            if (strpos($file, 'notify') === false) {
-                if ($this->isProcessRunning($pid)) {
-                    $metadata = ProcessMetadata::fromPidFile($file, $pid);
-                    $processes[] = $metadata->toArray();
-                } else {
-                    unlink($file); // Limpiar PID huérfano
-                    TradingLogger::warning("PID huérfano eliminado", ['file' => $file]);
-                }
+            if ($this->isProcessRunning($pid)) {
+                $metadata = ProcessMetadata::fromPidFile($file, $pid);
+                $processes[] = $metadata->toArray();
+            } else {
+                unlink($file); // Limpiar PID huérfano
+                TradingLogger::warning("PID huérfano eliminado", ['file' => $file]);
             }
         }
 
@@ -88,6 +85,6 @@ class ListCommand extends Command {
         }
         
         $table->render();
-        $output->writeln("<info>Total procesos de trading: " . count($processes) . "</info>");
+        $output->writeln("<info>Total procesos: " . count($processes) . "</info>");
     }
-}
+} 
