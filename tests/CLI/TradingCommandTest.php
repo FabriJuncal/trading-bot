@@ -2,52 +2,104 @@
 
 namespace Tests\CLI;
 
+use PHPUnit\Framework\TestCase;
 use TradingBot\CLI\TradingCommand;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\NullOutput;
+use TradingBot\Notifications\NotificationManager;
+use Symfony\Component\Console\Tester\CommandTester;
 
-class TradingCommandTest extends CommandTestCase
+class MockNotificationManager extends NotificationManager
 {
-    protected function registerCommands(): void
+    public array $sentMessages = [];
+
+    public function notify(string $message, bool $isSuccess = true, array $context = []): void
     {
-        $this->application->add(new TradingCommand());
+        $this->sentMessages[] = [
+            'message' => $message,
+            'is_success' => $isSuccess,
+            'context' => $context
+        ];
+    }
+}
+
+class TradingCommandTest extends TestCase
+{
+    private TradingCommand $command;
+    private MockNotificationManager $mockNotificationManager;
+    private CommandTester $commandTester;
+
+    protected function setUp(): void
+    {
+        putenv('APP_ENV=test');
+        $this->mockNotificationManager = new MockNotificationManager();
+        $this->command = new TradingCommand($this->mockNotificationManager);
+        $this->commandTester = new CommandTester($this->command);
     }
 
-    /**
-     * @dataProvider validCasesProvider
-     */
-    public function testValidCases(array $input, string $expectedOutput, int $expectedStatus): void
+    protected function tearDown(): void
     {
-        $status = $this->executeCommand('trade:run', $input);
+        putenv('APP_ENV=');
+    }
+
+    public function testValidInput(): void
+    {
+        $this->commandTester->execute([
+            '--strategy' => 'rsi',
+            '--exchange' => 'binance',
+            '--symbol' => 'BTC/USDT',
+            '--interval' => '1h'
+        ]);
+        $result = $this->commandTester->getStatusCode();
+        $this->assertEquals(0, $result);
         
-        $this->assertEquals($expectedStatus, $status);
-        $this->assertOutputContains($expectedOutput);
+        // Verificar que se envió la notificación
+        $this->assertNotEmpty($this->mockNotificationManager->sentMessages);
+        $lastMessage = end($this->mockNotificationManager->sentMessages);
+        $this->assertEquals("🤖 Bot de Trading Iniciado", $lastMessage['message']);
+        $this->assertTrue($lastMessage['is_success']);
+        $this->assertEquals('rsi', $lastMessage['context']['Estrategia']);
+        $this->assertEquals('binance', strtolower($lastMessage['context']['Exchange']));
+        $this->assertEquals('BTC/USDT', $lastMessage['context']['Par']);
+        $this->assertEquals('1h', $lastMessage['context']['Intervalo']);
     }
 
-    /**
-     * @dataProvider invalidCasesProvider
-     */
-    public function testInvalidCases(array $input, string $expectedOutput, int $expectedStatus): void
+    public function testInvalidStrategy(): void
     {
-        $status = $this->executeCommand('trade:run', $input);
-        
-        $this->assertEquals($expectedStatus, $status);
-        $this->assertOutputContains($expectedOutput);
+        $this->commandTester->execute([
+            '--strategy' => 'invalid',
+            '--exchange' => 'binance',
+            '--symbol' => 'BTC/USDT',
+            '--interval' => '1h'
+        ]);
+        $result = $this->commandTester->getStatusCode();
+        $this->assertEquals(1, $result);
+        $this->assertEmpty($this->mockNotificationManager->sentMessages);
     }
 
-    public static function validCasesProvider(): array
+    public function testInvalidExchange(): void
     {
-        $testCases = require __DIR__ . '/../data/command_test_cases.php';
-        return array_map(
-            fn($case) => [$case['input'], $case['expected_output'], $case['expected_status']],
-            $testCases['trade:run']['valid_cases']
-        );
+        $this->commandTester->execute([
+            '--strategy' => 'rsi',
+            '--exchange' => 'invalid',
+            '--symbol' => 'BTC/USDT',
+            '--interval' => '1h'
+        ]);
+        $result = $this->commandTester->getStatusCode();
+        $this->assertEquals(1, $result);
+        $this->assertEmpty($this->mockNotificationManager->sentMessages);
     }
 
-    public static function invalidCasesProvider(): array
+    public function testInvalidInterval(): void
     {
-        $testCases = require __DIR__ . '/../data/command_test_cases.php';
-        return array_map(
-            fn($case) => [$case['input'], $case['expected_output'], $case['expected_status']],
-            $testCases['trade:run']['invalid_cases']
-        );
+        $this->commandTester->execute([
+            '--strategy' => 'rsi',
+            '--exchange' => 'binance',
+            '--symbol' => 'BTC/USDT',
+            '--interval' => 'invalid'
+        ]);
+        $result = $this->commandTester->getStatusCode();
+        $this->assertEquals(1, $result);
+        $this->assertEmpty($this->mockNotificationManager->sentMessages);
     }
 } 

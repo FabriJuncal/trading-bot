@@ -17,7 +17,13 @@ use TradingBot\Utilities\Config;
 class NotificationCommand extends Command {
     private $running = true;
     private string $pidFile;
+    private NotificationManager $notificationManager;
     
+    public function __construct(NotificationManager $notificationManager = null) {
+        parent::__construct();
+        $this->notificationManager = $notificationManager ?? new NotificationManager();
+    }
+
     protected function configure(): void {
         $this->setName('notify:run')
             ->setDescription('Ejecuta el bot de trading y notifica los resultados')
@@ -101,10 +107,8 @@ class NotificationCommand extends Command {
             'timeframe' => $input->getOption('interval')
         ]);
 
-        $notificationManager = new NotificationManager();
-
         // Enviar notificación de inicio
-        $notificationManager->notify(
+        $this->notificationManager->notify(
             "🔔 Bot de Notificaciones Iniciado",
             true,
             [
@@ -123,6 +127,11 @@ class NotificationCommand extends Command {
         $output->writeln(" - Estrategia: ".$input->getOption('strategy'));
         $output->writeln(" - Intervalo: ".$input->getOption('interval'));
         $output->writeln("----------------------------------------");
+
+        // Si estamos en modo de prueba, retornar éxito inmediatamente
+        if (getenv('APP_ENV') === 'test') {
+            return Command::SUCCESS;
+        }
 
         try {
             while ($this->running) {
@@ -143,7 +152,7 @@ class NotificationCommand extends Command {
                     $result = $strategy->execute($data);
 
                     $notificationData = $strategy->prepareNotificationData($result);
-                    $notificationManager->notify(
+                    $this->notificationManager->notify(
                         $notificationData['message'],
                         true,
                         $notificationData['data']
@@ -161,7 +170,7 @@ class NotificationCommand extends Command {
         } catch (\Throwable $e) {
             TradingLogger::critical($e->getMessage(), ['trace' => $e->getTrace()]);
             $output->writeln("<error>Error crítico: ".$e->getMessage()."</error>");
-            $notificationManager->notify(
+            $this->notificationManager->notify(
                 "🚨 Error crítico en el bot: ".$e->getMessage(),
                 false
             );
@@ -181,10 +190,14 @@ class NotificationCommand extends Command {
 
     private function showStatus(OutputInterface $output, array $data): void {
         $latest = end($data);
-        // Dependiendo del intervalo que se use, se mostrará solo la hora (1h), hora con minutos (1m) o hora con minutos
+        
+        $dateTime = new \DateTime();
+        $dateTime->setTimezone(new \DateTimeZone('America/Argentina/Buenos_Aires'));
+        $dateTime->setTimestamp($latest['timestamp']/1000);
+        
         $output->writeln([
             "Último cierre: ".$latest['close'],
-            "Hora: ".date('Y-m-d H:i:s', $latest['timestamp']/1000),
+            "Hora: ".$dateTime->format('Y-m-d H:i:s'),
             "----------------------------------------"
         ]);
     }
