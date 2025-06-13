@@ -11,13 +11,14 @@ use TradingBot\CLI\TradingStopCommand;
 use TradingBot\CLI\NotificationStopCommand;
 use TradingBot\CLI\NotificationListCommand;
 use TradingBot\CLI\ProcessListCommand;
+use TradingBot\CLI\TestReportCommand;
 
 try {
     // Inicializar configuración
     Config::initialize();
     
     // Crear aplicación CLI
-    $application = new Application('Trading Bot', '1.0.0');
+    $application = new Application('Trading Bot CLI', '1.0.0');
     
     // Registrar comandos
     $application->add(new TradingCommand());
@@ -27,12 +28,13 @@ try {
     $application->add(new NotificationStopCommand());
     $application->add(new NotificationListCommand());
     $application->add(new ProcessListCommand());
+    $application->add(new TestReportCommand());
     
     // Ejecutar aplicación
     $application->run();
     
-} catch (\Throwable $e) {
-    echo "Error crítico: " . $e->getMessage() . PHP_EOL;
-    echo "Trace: " . $e->getTraceAsString() . PHP_EOL;
+} catch (\Exception $e) {
+    echo "Error crítico: " . $e->getMessage() . "\n";
+    echo "Trace: " . $e->getTraceAsString() . "\n";
     exit(1);
 }

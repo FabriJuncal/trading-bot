@@ -11,6 +11,10 @@ class DataServiceException extends \RuntimeException {
         \Throwable $previous = null,
         array $context = []
     ) {
+        $dateTime = new \DateTime();
+        $dateTime->setTimezone(new \DateTimeZone('America/Argentina/Buenos_Aires'));
+        
+        $context['timestamp'] = $dateTime->format('Y-m-d H:i:s');
         parent::__construct($message, $code, $previous);
         $this->context = $context;
     }

@@ -5,11 +5,11 @@ interface NotificationChannelInterface {
     /**
      * Envía una notificación a través del canal
      * 
-     * @param string $message Contenido principal de la notificación
-     * @param bool $isSuccess Indica si es una notificación de éxito o error
-     * @param array $context Datos adicionales para contexto
+     * @param string $message El mensaje a enviar
+     * @param bool $isSuccess Indica si la notificación es de éxito o error
+     * @param array $context Contexto adicional para la notificación
      * 
-     * @throws NotificationException Si ocurre un error en el envío
+     * @throws NotificationException Si hay un error al enviar la notificación
      */
     public function send(string $message, bool $isSuccess = true, array $context = []): void;
 }

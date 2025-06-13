@@ -12,7 +12,9 @@ class NotificationManager {
     private $maxRetries = 3;
 
     public function __construct() {
-        $this->enabledChannels = Config::get('notifications.enabled_channels', ['telegram']);
+        TradingLogger::info("Iniciando NotificationManager");
+        $this->enabledChannels = Config::get('config.notifications.enabled_channels', ['telegram']);
+        TradingLogger::info("Canales habilitados configurados: " . json_encode($this->enabledChannels));
         $this->initializeChannels();
     }
 
@@ -41,12 +43,65 @@ class NotificationManager {
     }
 
     private function initializeChannels(): void {
-        foreach ($this->enabledChannels as $channelName) {
-            $channelClass = __NAMESPACE__ . '\\' . ucfirst($channelName) . 'Notifier';
-            if (class_exists($channelClass)) {
-                $this->channels[$channelName] = new $channelClass();
+        try {
+            $enabledChannels = Config::get('config.notifications.enabled_channels', []);
+            TradingLogger::info("Canales habilitados en la configuración: " . json_encode($enabledChannels));
+            
+            if (empty($enabledChannels)) {
+                TradingLogger::warning('No hay canales de notificación habilitados');
+                return;
             }
+
+            foreach ($enabledChannels as $channel) {
+                try {
+                    $channelConfig = Config::get("config.notifications.{$channel}");
+                    TradingLogger::info("Configuración del canal {$channel}: " . json_encode($channelConfig));
+                    
+                    if (!$channelConfig) {
+                        TradingLogger::warning("No se encontró configuración para el canal {$channel}");
+                        continue;
+                    }
+
+                    if (!isset($channelConfig['enabled'])) {
+                        TradingLogger::warning("La configuración del canal {$channel} no tiene el campo 'enabled'");
+                        continue;
+                    }
+
+                    if (!$channelConfig['enabled']) {
+                        TradingLogger::warning("El canal {$channel} está deshabilitado en la configuración");
+                        continue;
+                    }
+
+                    $this->channels[$channel] = $this->createChannel($channel);
+                    TradingLogger::info("Canal de notificación {$channel} inicializado correctamente");
+                } catch (\Exception $e) {
+                    TradingLogger::error("Error al inicializar el canal {$channel}: " . $e->getMessage(), [
+                        'exception' => get_class($e),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
+            }
+
+            if (empty($this->channels)) {
+                TradingLogger::warning('Ningún canal de notificación pudo ser inicializado', [
+                    'enabled_channels' => $enabledChannels,
+                    'config' => Config::get('config.notifications')
+                ]);
+            }
+        } catch (\Exception $e) {
+            TradingLogger::error('Error al inicializar los canales de notificación: ' . $e->getMessage(), [
+                'exception' => get_class($e),
+                'trace' => $e->getTraceAsString()
+            ]);
         }
+    }
+
+    private function createChannel(string $channel): NotificationChannelInterface {
+        return match ($channel) {
+            'telegram' => new TelegramNotifier(),
+            'discord' => new DiscordNotifier(),
+            default => throw new NotificationException("Canal de notificación no soportado: {$channel}")
+        };
     }
 
     private function processQueue(): void {

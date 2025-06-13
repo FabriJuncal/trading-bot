@@ -60,12 +60,16 @@ class ProcessMetadata {
     }
 
     public function toArray(): array {
+        $dateTime = new \DateTime();
+        $dateTime->setTimezone(new \DateTimeZone('America/Argentina/Buenos_Aires'));
+        $dateTime->setTimestamp($this->startTime ?? 0);
+        
         return [
             'Tipo' => $this->type,
             'Exchange' => $this->exchange,
             'Par' => $this->symbol,
             'PID' => $this->pid,
-            'Inicio' => $this->startTime ? date('Y-m-d H:i:s', $this->startTime) : 'N/A',
+            'Inicio' => $this->startTime ? $dateTime->format('Y-m-d H:i:s') : 'N/A',
             'Tiempo de Ejecución' => $this->getUptime(),
             'Estado' => $this->status
         ];

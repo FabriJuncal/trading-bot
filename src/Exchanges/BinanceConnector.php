@@ -230,4 +230,49 @@ class BinanceConnector {
     public function setCurrentTimeframe(string $timeframe): void {
         $this->currentTimeframe = $timeframe;
     }
+
+    private function checkServerTime(): void {
+        $serverTime = $this->client->getTime()['serverTime'];
+        $localTime = time() * 1000;
+        $diff = abs($serverTime - $localTime);
+        
+        $dateTime = new \DateTime();
+        $dateTime->setTimezone(new \DateTimeZone('America/Argentina/Buenos_Aires'));
+        
+        $serverDateTime = clone $dateTime;
+        $serverDateTime->setTimestamp($serverTime/1000);
+        
+        $localDateTime = clone $dateTime;
+        $localDateTime->setTimestamp($localTime/1000);
+        
+        TradingLogger::info("Verificación de tiempo del servidor", [
+            'server_time' => $serverDateTime->format('Y-m-d H:i:s'),
+            'local_time' => $localDateTime->format('Y-m-d H:i:s'),
+            'diff_ms' => $diff
+        ]);
+        
+        if ($diff > 5000) {
+            throw new ExchangeException("Diferencia de tiempo con el servidor demasiado grande: {$diff}ms");
+        }
+    }
+
+    private function validateTimestamp(int $lastTimestamp): void {
+        $dateTime = new \DateTime();
+        $dateTime->setTimezone(new \DateTimeZone('America/Argentina/Buenos_Aires'));
+        $dateTime->setTimestamp($lastTimestamp/1000);
+        
+        if ($lastTimestamp > time() * 1000) {
+            throw new ExchangeException(
+                "Datos con timestamp futuro detectado. Última actualización: " . 
+                $dateTime->format('Y-m-d H:i:s')
+            );
+        }
+        
+        if (time() * 1000 - $lastTimestamp > 300000) {
+            throw new ExchangeException(
+                "Datos desactualizados. Última actualización: " . 
+                $dateTime->format('Y-m-d H:i:s')
+            );
+        }
+    }
 }

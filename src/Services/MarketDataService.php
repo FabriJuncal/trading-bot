@@ -36,7 +36,7 @@ class MarketDataService {
                 'symbol' => $this->symbol,
                 'timeframe' => $timeframe,
                 'data_points' => count($data),
-                'last_timestamp' => date('Y-m-d H:i:s', end($data)['timestamp']/1000)
+                'last_timestamp' => $this->formatData($data)['last_timestamp']
             ]);
 
             return $data;
@@ -61,7 +61,7 @@ class MarketDataService {
             // Registrar los datos en tiempo real
             TradingLogger::info("Datos en tiempo real obtenidos", [
                 'symbol' => $this->symbol,
-                'timestamp' => date('Y-m-d H:i:s', $data['timestamp']/1000),
+                'timestamp' => $this->formatLatestData($data)['timestamp'],
                 'close' => $data['close']
             ]);
 
@@ -150,7 +150,7 @@ class MarketDataService {
         if ($lastTimestamp > ($serverTime + 60000)) { // No más de 1 minuto en el futuro
             throw new DataServiceException(
                 "Datos con timestamp futuro detectado. Última actualización: " . 
-                date('Y-m-d H:i:s', $lastTimestamp/1000)
+                $this->formatData($data)['last_timestamp']
             );
         }
 
@@ -162,7 +162,7 @@ class MarketDataService {
         if (($serverTime - $lastTimestamp) > $maxAge) {
             throw new DataServiceException(
                 "Datos desactualizados. Última actualización: " . 
-                date('Y-m-d H:i:s', $lastTimestamp/1000)
+                $this->formatData($data)['last_timestamp']
             );
         }
     }
@@ -231,5 +231,36 @@ class MarketDataService {
 
     public function clearCache(): void {
         $this->cache->deleteItem('*');
+    }
+
+    private function formatData(array $data): array {
+        $dateTime = new \DateTime();
+        $dateTime->setTimezone(new \DateTimeZone('America/Argentina/Buenos_Aires'));
+        $dateTime->setTimestamp(end($data)['timestamp']/1000);
+        
+        return [
+            'last_timestamp' => $dateTime->format('Y-m-d H:i:s')
+        ];
+    }
+
+    private function formatLatestData(array $data): array {
+        $dateTime = new \DateTime();
+        $dateTime->setTimezone(new \DateTimeZone('America/Argentina/Buenos_Aires'));
+        $dateTime->setTimestamp($data['timestamp']/1000);
+        
+        return [
+            'timestamp' => $dateTime->format('Y-m-d H:i:s'),
+            'price' => $data['close']
+        ];
+    }
+
+    private function logDataUpdate(int $lastTimestamp): void {
+        $dateTime = new \DateTime();
+        $dateTime->setTimezone(new \DateTimeZone('America/Argentina/Buenos_Aires'));
+        $dateTime->setTimestamp($lastTimestamp/1000);
+        
+        TradingLogger::info("Datos actualizados", [
+            'last_timestamp' => $dateTime->format('Y-m-d H:i:s')
+        ]);
     }
 }
