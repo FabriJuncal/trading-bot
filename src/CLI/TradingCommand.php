@@ -19,10 +19,17 @@ class TradingCommand extends Command {
     private $running = true;
     private string $pidFile;
     private NotificationManager $notificationManager;
+    private ?MarketDataService $marketDataService = null;
     
     public function __construct(NotificationManager $notificationManager = null) {
         parent::__construct();
         $this->notificationManager = $notificationManager ?? new NotificationManager();
+    }
+
+    public function setMarketDataService(MarketDataService $service): self
+    {
+        $this->marketDataService = $service;
+        return $this;
     }
 
     protected function configure(): void {
@@ -85,7 +92,7 @@ class TradingCommand extends Command {
         }
 
         try {
-            $marketDataService = new MarketDataService(
+            $marketDataService = $this->marketDataService ?? new MarketDataService(
                 $input->getOption('exchange'),
                 $input->getOption('symbol')
             );
@@ -94,45 +101,47 @@ class TradingCommand extends Command {
             return Command::FAILURE;
         }
 
+        // Si estamos en modo de prueba, ejecutar una iteración
+        if (getenv('APP_ENV') === 'test') {
+            try {
+                $data = $marketDataService->getHistoricalData(
+                    $input->getOption('interval'),
+                    $strategy->getParameters()['period'] * 2,
+                    true // Forzar actualización de datos
+                );
+
+                if ($strategy->shouldExecute($data)) {
+                    $result = $strategy->execute($data);
+
+                    $notificationData = $strategy->prepareNotificationData($result);
+                    $this->notificationManager->notify(
+                        $notificationData['message'],
+                        true,
+                        $notificationData['data']
+                    );
+
+                    $output->writeln("<fg=green>Notificación enviada:</> ".json_encode($notificationData));
+                }
+
+                $this->showStatus($output, $data);
+                return Command::SUCCESS;
+            } catch (\Throwable $e) {
+                TradingLogger::critical($e->getMessage(), ['trace' => $e->getTrace()]);
+                $output->writeln("<error>Error crítico: ".$e->getMessage()."</error>");
+                $this->notificationManager->notify(
+                    "🚨 Error crítico en el bot: ".$e->getMessage(),
+                    false
+                );
+                return Command::FAILURE;
+            }
+        }
+
+        // Registrar PID y manejadores de señales solo si no estamos en modo test
         $this->registerPid();
         register_shutdown_function([$this, 'cleanupPid']);
-
-        // Registrar manejador de señales
         pcntl_async_signals(true);
         pcntl_signal(SIGINT, [$this, 'shutdown']);
         pcntl_signal(SIGTERM, [$this, 'shutdown']);
-
-        // Inicializar componentes
-        $strategy->setParameters([
-            'symbol' => $input->getOption('symbol'),
-            'timeframe' => $input->getOption('interval')
-        ]);
-
-        // Enviar notificación de inicio
-        $this->notificationManager->notify(
-            "🤖 Bot de Trading Iniciado",
-            true,
-            [
-                'Tipo' => 'Trading',
-                'Exchange' => ucfirst(strtolower($input->getOption('exchange'))),
-                'Par' => $input->getOption('symbol'),
-                'Estrategia' => $input->getOption('strategy'),
-                'Intervalo' => $input->getOption('interval'),
-                'PID' => getmypid()
-            ]
-        );
-
-        $output->writeln("<info>Iniciando bot de trading con configuración:</info>");
-        $output->writeln(" - Exchange: ".$input->getOption('exchange'));
-        $output->writeln(" - Par: ".$input->getOption('symbol'));
-        $output->writeln(" - Estrategia: ".$input->getOption('strategy'));
-        $output->writeln(" - Intervalo: ".$input->getOption('interval'));
-        $output->writeln("----------------------------------------");
-
-        // Si estamos en modo de prueba, retornar éxito inmediatamente
-        if (getenv('APP_ENV') === 'test') {
-            return Command::SUCCESS;
-        }
 
         try {
             while ($this->running) {
